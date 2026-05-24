@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>서브웨이 대기시간 분석 시뮬레이터</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green:      #008c35;
+    --green-dark: #006628;
+    --green-mid:  #00a33f;
+    --green-light:#e6f7ed;
+    --green-dim:  rgba(0,140,53,0.10);
+    --yellow:     #f5c518;
+    --yellow-dim: rgba(245,197,24,0.12);
+    --yellow-dark:#b8930f;
+    --bg:         #ffffff;
+    --bg2:        #f7faf8;
+    --bg3:        #eef5f1;
+    --border:     #d0e6d8;
+    --text:       #111f15;
+    --text2:      #4a7059;
+    --text3:      #8aab96;
+    --red:        #d94040;
+    --shadow:     0 2px 12px rgba(0,100,40,0.08);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  header { background:var(--green-dark); padding:0 32px; }
+  .header-inner { max-width:1100px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px 0; flex-wrap:wrap; }
+  .logo { display:flex; align-items:center; gap:14px; }
+  .logo-icon { width:42px; height:42px; background:var(--yellow); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+  .logo h1 { font-family:'Space Mono',monospace; font-size:clamp(16px,2.5vw,22px); font-weight:700; color:#fff; letter-spacing:-0.5px; }
+  .logo h1 span { color:var(--yellow); }
+  .logo p { font-size:12px; color:rgba(255,255,255,0.6); margin-top:2px; }
+  .header-badges { display:flex; gap:8px; flex-wrap:wrap; }
+  .hbadge { padding:4px 12px; border-radius:999px; font-size:11px; font-weight:700; font-family:'Space Mono',monospace; }
+  .hbadge-green { background:var(--green-mid); color:#fff; }
+  .hbadge-yellow { background:var(--yellow); color:var(--green-dark); }
+  .hbadge-outline { background:transparent; color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.3); }
+
+  .main { max-width:1100px; margin:0 auto; padding:32px 24px 60px; }
+
+  .sec-label { font-size:10px; font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:2px; color:var(--text3); margin-bottom:12px; display:flex; align-items:center; gap:10px; }
+  .sec-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .controls-panel { background:var(--bg2); border:1px solid var(--border); border-radius:14px; padding:24px; margin-bottom:24px; box-shadow:var(--shadow); }
+  .controls-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px; margin-bottom:20px; }
+  .ctrl-group { display:flex; flex-direction:column; gap:14px; }
+  .ctrl-group-title { font-size:13px; font-weight:700; color:var(--text2); display:flex; align-items:center; gap:8px; padding-bottom:8px; border-bottom:2px solid var(--border); }
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
+  .dot-green { background:var(--green); }
+  .dot-yellow { background:var(--yellow-dark); }
+  .ctrl-row { display:flex; flex-direction:column; gap:6px; }
+  .ctrl-label { display:flex; justify-content:space-between; font-size:12px; color:var(--text2); }
+  .ctrl-val { font-family:'Space Mono',monospace; font-weight:700; color:var(--text); }
+
+  input[type=range] { -webkit-appearance: none;appearance: none;; width:100%; height:5px; border-radius:3px; outline:none; cursor:pointer; }
+  input[type=range].tr-green { background:linear-gradient(90deg,var(--green) var(--pct,30%),#d0e6d8 var(--pct,30%)); }
+  input[type=range].tr-yellow { background:linear-gradient(90deg,var(--yellow-dark) var(--pct,30%),#d0e6d8 var(--pct,30%)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:15px; height:15px; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.2); cursor:pointer; }
+  input[type=range].tr-green::-webkit-slider-thumb { background:var(--green); }
+  input[type=range].tr-yellow::-webkit-slider-thumb { background:var(--yellow-dark); }
+
+  .btn-row { display:flex; gap:6px; flex-wrap:wrap; }
+  .srv-btn { width:34px; height:34px; border-radius:7px; border:1.5px solid var(--border); background:#fff; color:var(--text3); font-family:'Space Mono',monospace; font-size:13px; font-weight:700; cursor:pointer; transition:all 0.15s; }
+  .srv-btn:hover { border-color:var(--green); color:var(--green); }
+  .srv-btn.on-green { border-color:var(--green); background:var(--green-dim); color:var(--green-dark); }
+  .srv-btn.on-yellow { border-color:var(--yellow-dark); background:var(--yellow-dim); color:var(--yellow-dark); }
+
+  .mu-badge { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#fff; border:1px solid var(--border); border-radius:8px; font-size:12px; }
+  .mu-badge-label { color:var(--text3); }
+  .mu-badge-val { font-family:'Space Mono',monospace; font-weight:700; font-size:13px; }
+  .mu-badge-val.green { color:var(--green-dark); }
+  .mu-badge-val.yellow { color:var(--yellow-dark); }
+
+  .run-btn { width:100%; padding:14px; background:var(--green); color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:700; font-family:'Noto Sans KR',sans-serif; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:10px; }
+  .run-btn:hover { background:var(--green-dark); box-shadow:0 4px 16px rgba(0,140,53,0.3); transform:translateY(-1px); }
+  .run-btn:active { transform:none; }
+  .run-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+  .spinner { width:18px; height:18px; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite; display:none; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Result table */
+  .result-wrap { background:#fff; border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; box-shadow:var(--shadow); }
+  .result-table { width:100%; border-collapse:collapse; font-size:14px; }
+  .result-table thead tr { background:var(--green-dark); color:#fff; }
+  .result-table thead th { padding:14px 18px; font-weight:700; text-align:left; font-size:13px; }
+  .result-table thead th.col-human { background:var(--green); text-align:center; }
+  .result-table thead th.col-kiosk { background:var(--yellow-dark); text-align:center; }
+  .result-table thead th.col-diff { background:#2a4a2a; text-align:center; font-size:12px; }
+  .result-table tbody tr { border-bottom:1px solid var(--border); transition:background 0.15s; }
+  .result-table tbody tr:last-child { border-bottom:none; }
+  .result-table tbody tr:hover { background:var(--bg2); }
+  .result-table tbody tr.total-row { background:var(--green-light); font-weight:700; }
+  .result-table tbody tr.total-row:hover { background:#d0edda; }
+  .result-table td { padding:13px 18px; color:var(--text2); vertical-align:middle; }
+  .result-table td.metric-name { color:var(--text); font-weight:500; font-size:13px; }
+  .result-table td.val-human { text-align:center; font-family:'Space Mono',monospace; font-weight:700; color:var(--green-dark); font-size:15px; }
+  .result-table td.val-kiosk { text-align:center; font-family:'Space Mono',monospace; font-weight:700; color:var(--yellow-dark); font-size:15px; }
+  .result-table td.val-diff { text-align:center; font-family:'Space Mono',monospace; font-size:13px; font-weight:700; }
+  .result-table td.sub-row { font-size:11px; color:var(--text3); padding-top:4px; padding-bottom:4px; background:var(--bg2); }
+
+  /* Winner banner */
+  .winner-banner { display:flex; align-items:center; gap:16px; padding:16px 20px; border-radius:10px; margin-bottom:24px; font-weight:700; font-size:15px; }
+  .winner-banner.human { background:var(--green-dim); border:1.5px solid var(--green); color:var(--green-dark); }
+  .winner-banner.kiosk { background:var(--yellow-dim); border:1.5px solid var(--yellow-dark); color:var(--yellow-dark); }
+  .winner-banner.tie   { background:var(--bg3); border:1.5px solid var(--border); color:var(--text2); }
+  .winner-icon { font-size:26px; }
+  .winner-sub { font-size:12px; font-weight:400; color:var(--text2); margin-top:2px; }
+
+  /* Tabs */
+  .tabs { display:flex; border-bottom:2px solid var(--border); margin-bottom:20px; }
+  .tab-btn { padding:10px 20px; font-size:13px; font-family:'Noto Sans KR',sans-serif; font-weight:500; border:none; background:transparent; color:var(--text3); cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px; transition:all 0.15s; }
+  .tab-btn:hover { color:var(--text2); }
+  .tab-btn.active { color:var(--green-dark); border-bottom-color:var(--green); font-weight:700; }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* Data tables */
+  .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .data-table th { padding:10px 14px; font-family:'Space Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text3); border-bottom:2px solid var(--border); text-align:left; background:var(--bg2); }
+  .data-table td { padding:10px 14px; border-bottom:1px solid var(--bg3); color:var(--text2); }
+  .data-table tr:last-child td { border-bottom:none; }
+  .data-table tr:hover td { background:var(--bg2); }
+  .data-table td.td-green { color:var(--green-dark); font-family:'Space Mono',monospace; font-weight:700; }
+  .data-table td.td-yellow { color:var(--yellow-dark); font-family:'Space Mono',monospace; font-weight:700; }
+  .data-table tr.current-row td { background:var(--green-light); }
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-family:'Space Mono',monospace; font-weight:700; }
+  .tag-green { background:var(--green-dim); color:var(--green-dark); border:1px solid rgba(0,140,53,0.2); }
+  .tag-yellow { background:var(--yellow-dim); color:var(--yellow-dark); border:1px solid rgba(185,147,15,0.2); }
+  .tag-tie { background:var(--bg3); color:var(--text2); border:1px solid var(--border); }
+
+  /* Insight cards */
+  .insight-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; margin-bottom:24px; }
+  .insight-card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:16px; border-left:4px solid var(--green); }
+  .insight-card.warn { border-left-color:var(--red); }
+  .insight-card h4 { font-size:11px; font-weight:700; color:var(--green-dark); margin-bottom:6px; font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:0.5px; }
+  .insight-card.warn h4 { color:var(--red); }
+  .insight-card p { font-size:12px; color:var(--text2); line-height:1.6; }
+
+  canvas { width:100%; display:block; border-radius:8px; }
+
+  .placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; height:140px; color:var(--text3); font-size:14px; gap:10px; }
+  .placeholder .icon { font-size:30px; }
+
+  .footer-note { text-align:center; font-size:11px; color:var(--text3); padding-top:20px; border-top:1px solid var(--border); line-height:2; }
+
+  @media(max-width:640px){
+    .result-table thead th,.result-table td { padding:10px 10px; font-size:12px; }
+    .result-table td.val-human,.result-table td.val-kiosk { font-size:13px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">🥖</div>
+      <div>
+        <h1>SUBWAY <span>QUEUE</span> ANALYZER</h1>
+        <p>실측 데이터 기반 대기행렬 시뮬레이션 &nbsp;|&nbsp; M/G/c Queueing Theory</p>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="hbadge hbadge-green">👤 인간서버 n=60</span>
+      <span class="hbadge hbadge-yellow">🖥️ 키오스크+인간 n=50</span>
+      <span class="hbadge hbadge-outline">실측 기반</span>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="sec-label" style="margin-top:4px">시뮬레이션 파라미터</div>
+  <div class="controls-panel">
+    <div class="controls-grid">
+
+      <div class="ctrl-group">
+        <div class="ctrl-group-title">📊 공통 설정</div>
+        <div class="ctrl-row">
+          <div class="ctrl-label"><span>고객 도착률 λ (명/분)</span><span class="ctrl-val" id="lambda-val">1.5</span></div>
+          <input type="range" id="lambda-slider" class="tr-green" min="0.3" max="5.0" step="0.1" value="1.5" oninput="updateSlider(this,'lambda-val',0.3,5.0,1)">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:2px">
+            <span>한산 0.3</span><span>보통 1.5</span><span>혼잡 5.0</span>
+          </div>
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-label"><span>시뮬레이션 시간 (분)</span><span class="ctrl-val" id="simtime-val">60</span></div>
+          <input type="range" id="simtime-slider" class="tr-green" min="30" max="240" step="30" value="60" oninput="updateSlider(this,'simtime-val',30,240,0)">
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-group-title"><span class="dot dot-green"></span> 인간 서버</div>
+        <div class="ctrl-row">
+          <div class="ctrl-label"><span>서버(직원) 수 c</span><span class="ctrl-val" id="human-c-val">3</span></div>
+          <div class="btn-row" id="human-c-btns">
+            <button class="srv-btn on-green" onclick="setServer(1)">1</button>
+            <button class="srv-btn on-green" onclick="setServer(2)">2</button>
+            <button class="srv-btn on-green" onclick="setServer(3)">3</button>
+            <button class="srv-btn" onclick="setServer(4)">4</button>
+            <button class="srv-btn" onclick="setServer(5)">5</button>
+          </div>
+        </div>
+        <div class="mu-badge">
+          <span class="mu-badge-label">조리시간 μ (고정)</span>
+          <span class="mu-badge-val green">3분 21초 &nbsp;<span style="font-size:10px;color:var(--text3);font-weight:400">실측 평균</span></span>
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-group-title"><span class="dot dot-yellow"></span> 키오스크 + 인간</div>
+        <div class="ctrl-row">
+          <div class="ctrl-label"><span>키오스크 수 k</span><span class="ctrl-val" id="kiosk-k-val">2</span></div>
+          <div class="btn-row" id="kiosk-k-btns">
+            <button class="srv-btn" onclick="setKiosk('k',1)">1</button>
+            <button class="srv-btn on-yellow" onclick="setKiosk('k',2)">2</button>
+            <button class="srv-btn" onclick="setKiosk('k',3)">3</button>
+            <button class="srv-btn" onclick="setKiosk('k',4)">4</button>
+          </div>
+        </div>
+        <div class="mu-badge">
+          <span class="mu-badge-label">키오스크 주문시간 μ_k (고정)</span>
+          <span class="mu-badge-val yellow">2분 07초 &nbsp;<span style="font-size:10px;color:var(--text3);font-weight:400">실측 평균</span></span>
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-label"><span>인간서버 수 c_k</span><span class="ctrl-val" id="kiosk-c-val">3</span></div>
+          <div class="btn-row" id="kiosk-c-btns">
+            <button class="srv-btn on-yellow" onclick="setKiosk('c',1)">1</button>
+            <button class="srv-btn on-yellow" onclick="setKiosk('c',2)">2</button>
+            <button class="srv-btn on-yellow" onclick="setKiosk('c',3)">3</button>
+            <button class="srv-btn" onclick="setKiosk('c',4)">4</button>
+            <button class="srv-btn" onclick="setKiosk('c',5)">5</button>
+          </div>
+        </div>
+        <div class="mu-badge">
+          <span class="mu-badge-label">조리시간 μ_c (고정)</span>
+          <span class="mu-badge-val yellow">4분 51초 &nbsp;<span style="font-size:10px;color:var(--text3);font-weight:400">실측 평균</span></span>
+        </div>
+      </div>
+
+    </div>
+    <button class="run-btn" id="run-btn" onclick="runSimulation()">
+      <div class="spinner" id="spinner"></div>
+      <span id="run-label">▶ 시뮬레이션 실행</span>
+    </button>
+  </div>
+
+  <div id="placeholder" class="controls-panel">
+    <div class="placeholder">
+      <div class="icon">🎯</div>
+      <div>파라미터를 설정하고 시뮬레이션을 실행하세요</div>
+      <div style="font-size:12px;color:var(--text3)">Monte Carlo 시뮬레이션 (이벤트 구동 방식)</div>
+    </div>
+  </div>
+
+  <div id="results-section" style="display:none">
+
+    <div id="winner-banner" class="winner-banner tie">
+      <div class="winner-icon" id="winner-icon">—</div>
+      <div>
+        <div id="winner-text">—</div>
+        <div class="winner-sub" id="winner-sub">—</div>
+      </div>
+    </div>
+
+    <div class="sec-label">시뮬레이션 결과</div>
+    <div class="result-wrap">
+      <table class="result-table">
+        <thead>
+          <tr>
+            <th style="width:34%">지표</th>
+            <th class="col-human">👤 인간 서버<br><span id="h-badge" style="font-size:10px;font-weight:400;opacity:0.85">c=3</span></th>
+            <th class="col-kiosk">🖥️ 키오스크+인간<br><span id="k-badge" style="font-size:10px;font-weight:400;opacity:0.85">k=2+c=3</span></th>
+            <th class="col-diff">차이<br><span style="font-size:10px;font-weight:400;opacity:0.7">키오스크−인간</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="metric-name">줄 대기시간 (Wq)</td>
+            <td class="val-human" id="h-wq">—</td>
+            <td class="val-kiosk" id="k-wq">—</td>
+            <td class="val-diff" id="diff-wq">—</td>
+          </tr>
+          <tr>
+            <td class="sub-row" colspan="1" style="padding-left:28px">↳ 키오스크: 키오스크 앞 줄 대기</td>
+            <td class="sub-row"></td>
+            <td class="sub-row" id="k-wq-sub" style="text-align:center">—</td>
+            <td class="sub-row"></td>
+          </tr>
+          <tr>
+            <td class="metric-name">주문·조리 서비스시간</td>
+            <td class="val-human" id="h-ws">—</td>
+            <td class="val-kiosk" id="k-ws">—</td>
+            <td class="val-diff" id="diff-ws">—</td>
+          </tr>
+          <tr>
+            <td class="sub-row" colspan="1" style="padding-left:28px">↳ 키오스크: 주문시간 + 조리대기 + 조리</td>
+            <td class="sub-row"></td>
+            <td class="sub-row" id="k-ws-detail" style="text-align:center">—</td>
+            <td class="sub-row"></td>
+          </tr>
+          <tr class="total-row">
+            <td class="metric-name" style="color:var(--green-dark)">🕐 총 체류시간</td>
+            <td class="val-human" id="h-total" style="font-size:18px">—</td>
+            <td class="val-kiosk" id="k-total" style="font-size:18px">—</td>
+            <td class="val-diff" id="diff-total">—</td>
+          </tr>
+          <tr>
+            <td class="metric-name">서버 이용률 ρ</td>
+            <td class="val-human" id="h-rho">—</td>
+            <td class="val-kiosk" id="k-rho">—</td>
+            <td class="val-diff" style="color:var(--text3);font-size:11px">키오스크/조리</td>
+          </tr>
+          <tr>
+            <td class="metric-name">평균 대기 인원 Lq</td>
+            <td class="val-human" id="h-lq">—</td>
+            <td class="val-kiosk" id="k-lq">—</td>
+            <td class="val-diff" id="diff-lq">—</td>
+          </tr>
+          <tr>
+            <td class="metric-name">시뮬레이션 고객 수</td>
+            <td class="val-human" id="h-n">—</td>
+            <td class="val-kiosk" id="k-n">—</td>
+            <td class="val-diff" style="color:var(--text3)">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('insights')">💡 인사이트</button>
+      <button class="tab-btn" onclick="switchTab('distribution')">📊 분포 차트</button>
+      <button class="tab-btn" onclick="switchTab('lambda')">λ별 비교표</button>
+      <button class="tab-btn" onclick="switchTab('theory')">이론값 (M/M/c)</button>
+    </div>
+
+    <div class="tab-content active" id="tab-insights">
+      <div class="insight-grid" id="insight-grid"></div>
+    </div>
+
+    <div class="tab-content" id="tab-distribution">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px">
+        <div class="sec-label">총 대기시간 분포 (히스토그램)</div>
+        <canvas id="dist-canvas" height="220"></canvas>
+        <div style="display:flex;gap:20px;margin-top:10px;font-size:12px;color:var(--text2)">
+          <span><span style="color:var(--green)">■</span> 인간서버</span>
+          <span><span style="color:var(--yellow-dark)">■</span> 키오스크+인간</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-lambda">
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>λ (명/분)</th>
+              <th>👤 인간서버 총</th>
+              <th>🖥️ 키오스크 총</th>
+              <th>차이 (키오스크−인간)</th>
+              <th>우위</th>
+            </tr>
+          </thead>
+          <tbody id="lambda-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-theory">
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>지표</th>
+              <th>👤 인간서버 이론</th>
+              <th>👤 인간서버 시뮬</th>
+              <th>🖥️ 키오스크 이론</th>
+              <th>🖥️ 키오스크 시뮬</th>
+            </tr>
+          </thead>
+          <tbody id="theory-tbody"></tbody>
+        </table>
+      </div>
+      <div style="padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--text2);line-height:1.8;margin-bottom:24px">
+        <strong style="color:var(--green-dark)">모델 설명:</strong>
+        인간서버는 M/G/c 대기행렬 (단일 큐, c개 서버).
+        키오스크+인간은 직렬 2단계 — 1단계: M/G/k (키오스크 주문), 2단계: M/G/c (조리).
+        실측 CV값(인간조리 0.37, 키오스크주문 0.62)으로 보아 지수분포 가정이 완벽하지 않으므로 시뮬레이션 결과를 우선시하세요.
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-note">
+    실측 데이터: 인간서버 60건 (서버수 3~4명) · 키오스크+인간 50건 (키오스크 2대, 인간서버 3명)<br>
+    시뮬레이션: Monte Carlo — 지수분포 기반 이벤트 구동 방식 · 대기행렬 이론: M/M/c (인간서버), 직렬 M/M/k → M/M/c (키오스크+인간)
+  </div>
+
+</div>
+
+<script>
+const S = { lambda:1.5, simTime:60, humanC:3, humanMu:3.346, kioskK:2, kioskMuK:2.110, kioskC:3, kioskMuC:4.857 };
+const simResults = { human:null, kiosk:null };
+
+function updateSlider(el, id, min, max, dec) {
+  const v = parseFloat(el.value);
+  document.getElementById(id).textContent = v.toFixed(dec);
+  el.style.setProperty('--pct', ((v-min)/(max-min)*100).toFixed(1)+'%');
+  if (id==='lambda-val') S.lambda=v;
+  else if (id==='simtime-val') S.simTime=v;
+}
+
+function setServer(n) {
+  S.humanC=n;
+  document.getElementById('human-c-val').textContent=n;
+  document.querySelectorAll('#human-c-btns .srv-btn').forEach((b,i)=>{ b.className='srv-btn'+(i<n?' on-green':''); });
+}
+
+function setKiosk(p,n) {
+  if (p==='k') {
+    S.kioskK=n;
+    document.getElementById('kiosk-k-val').textContent=n;
+    document.querySelectorAll('#kiosk-k-btns .srv-btn').forEach((b,i)=>{ b.className='srv-btn'+(i<n?' on-yellow':''); });
+  } else {
+    S.kioskC=n;
+    document.getElementById('kiosk-c-val').textContent=n;
+    document.querySelectorAll('#kiosk-c-btns .srv-btn').forEach((b,i)=>{ b.className='srv-btn'+(i<n?' on-yellow':''); });
+  }
+}
+
+function switchTab(tab) {
+  ['insights','distribution','lambda','theory'].forEach((t,i)=>{
+    document.querySelectorAll('.tab-btn')[i].className='tab-btn'+(t===tab?' active':'');
+    document.getElementById('tab-'+t).className='tab-content'+(t===tab?' active':'');
+  });
+  if (tab==='distribution'&&simResults.human) drawDistribution(simResults.human.totalArr, simResults.kiosk.totalArr);
+}
+
+function exp(r){ return -Math.log(1-Math.random())/r; }
+
+function simHuman(lam, muSec, c, tSec) {
+  const srv=new Array(c).fill(0); let t=0, next=exp(lam);
+  const wq=[],ws=[],tot=[];
+  while(t<tSec){ t=next; if(t>tSec)break;
+    const fi=srv.indexOf(Math.min(...srv));
+    const st=Math.max(srv[fi],t), w=st-t, s=exp(1/muSec);
+    srv[fi]=st+s; wq.push(w); ws.push(s); tot.push(w+s);
+    next=t+exp(lam); }
+  return {wq,ws,tot};
+}
+
+function simKiosk(lam,muKSec,k,muCSec,c,tSec){
+  const ks=new Array(k).fill(0),cs=new Array(c).fill(0);
+  let t=0,next=exp(lam);
+  const kwq=[],kws=[],cwq=[],cws=[],tot=[];
+  while(t<tSec){ t=next; if(t>tSec)break;
+    const ki=ks.indexOf(Math.min(...ks));
+    const kst=Math.max(ks[ki],t),kw=kst-t,kv=exp(1/muKSec);
+    ks[ki]=kst+kv; const kd=kst+kv;
+    const ci=cs.indexOf(Math.min(...cs));
+    const cst=Math.max(cs[ci],kd),cw=cst-kd,cv=exp(1/muCSec);
+    cs[ci]=cst+cv;
+    kwq.push(kw);kws.push(kv);cwq.push(cw);cws.push(cv);tot.push(kw+kv+cw+cv);
+    next=t+exp(lam); }
+  return {kwq,kws,cwq,cws,tot};
+}
+
+const avg=a=>a.reduce((s,v)=>s+v,0)/a.length||0;
+
+function mmcTheory(lam,mu,c){
+  const rho=lam/(c*mu); if(rho>=1) return{rho,Wq:Infinity,W:1/mu,Lq:Infinity};
+  const a=lam/mu; let sum=0,fact=1;
+  for(let n=0;n<c;n++){ if(n>0)fact*=n; sum+=Math.pow(a,n)/fact; }
+  const P0=1/(sum+Math.pow(a,c)/(fact*c)/(1-rho));
+  const Pc=Math.pow(a,c)/(fact*c)*P0;
+  const Lq=Pc*rho/(1-rho),Wq=Lq/lam;
+  return{rho,Wq,W:Wq+1/mu,Lq};
+}
+
+function fmt(sec){
+  if(!isFinite(sec))return'∞';
+  const m=Math.floor(sec/60),s=Math.round(sec%60);
+  if(m===0)return`${s}초`; if(s===0)return`${m}분`; return`${m}분 ${s}초`;
+}
+
+function diffStyle(v){ return Math.abs(v)<10?'color:var(--text3)':v>0?'color:var(--yellow-dark)':'color:var(--green-dark)'; }
+function diffText(v){ if(Math.abs(v)<10)return'≈ 동등'; return(v>0?'+':'')+fmt(Math.abs(v)); }
+
+async function runSimulation(){
+  const btn=document.getElementById('run-btn'),sp=document.getElementById('spinner');
+  btn.disabled=true; sp.style.display='block';
+  document.getElementById('run-label').textContent='시뮬레이션 중...';
+  await new Promise(r=>setTimeout(r,20));
+
+  const{lambda,simTime,humanC,humanMu,kioskK,kioskMuK,kioskC,kioskMuC}=S;
+  const T=simTime*60, L=lambda/60;
+  const ITERS=6;
+  const hA={wq:[],ws:[],tot:[]}, kA={kwq:[],kws:[],cwq:[],cws:[],tot:[]};
+
+  for(let i=0;i<ITERS;i++){
+    const h=simHuman(L,humanMu*60,humanC,T);
+    hA.wq.push(...h.wq); hA.ws.push(...h.ws); hA.tot.push(...h.tot);
+    const k=simKiosk(L,kioskMuK*60,kioskK,kioskMuC*60,kioskC,T);
+    kA.kwq.push(...k.kwq);kA.kws.push(...k.kws);kA.cwq.push(...k.cwq);kA.cws.push(...k.cws);kA.tot.push(...k.tot);
+  }
+
+  const H={ wq:avg(hA.wq), ws:avg(hA.ws), total:avg(hA.tot), totalArr:hA.tot, n:hA.tot.length,
+    rho:Math.min(lambda*humanMu/humanC,1), lq:avg(hA.wq)*lambda/60 };
+  const K={ kwq:avg(kA.kwq), kws:avg(kA.kws), cwq:avg(kA.cwq), cws:avg(kA.cws),
+    total:avg(kA.tot), totalArr:kA.tot, n:kA.tot.length,
+    rhoK:Math.min(lambda*kioskMuK/kioskK,1), rhoC:Math.min(lambda*kioskMuC/kioskC,1),
+    lqK:avg(kA.kwq)*lambda/60, lqC:avg(kA.cwq)*lambda/60 };
+  simResults.human=H; simResults.kiosk=K;
+
+  document.getElementById('placeholder').style.display='none';
+  document.getElementById('results-section').style.display='block';
+  document.getElementById('h-badge').textContent=`c=${humanC}`;
+  document.getElementById('k-badge').textContent=`k=${kioskK}+c=${kioskC}`;
+
+  // Wq
+  set('h-wq', fmt(H.wq));
+  set('k-wq', fmt(K.kwq));
+  set('k-wq-sub', `키오스크 줄 대기: ${fmt(K.kwq)}`);
+  setDiff('diff-wq', K.kwq - H.wq);
+
+  // Ws
+  const kWsSub = K.kws + K.cwq + K.cws;
+  set('h-ws', fmt(H.ws));
+  set('k-ws', fmt(kWsSub));
+  set('k-ws-detail', `주문 ${fmt(K.kws)} + 조리대기 ${fmt(K.cwq)} + 조리 ${fmt(K.cws)}`);
+  setDiff('diff-ws', kWsSub - H.ws);
+
+  // Total
+  set('h-total', fmt(H.total));
+  set('k-total', fmt(K.total));
+  setDiff('diff-total', K.total - H.total);
+
+  // Rho
+  set('h-rho', (H.rho*100).toFixed(1)+'%');
+  set('k-rho', `${(K.rhoK*100).toFixed(1)}% / ${(K.rhoC*100).toFixed(1)}%`);
+
+  // Lq
+  set('h-lq', H.lq.toFixed(2)+'명');
+  set('k-lq', `${K.lqK.toFixed(2)} / ${K.lqC.toFixed(2)}명`);
+  const dLq=(K.lqK+K.lqC)-H.lq;
+  const dlqEl=document.getElementById('diff-lq');
+  dlqEl.textContent=(dLq>0?'+':'')+dLq.toFixed(2)+'명';
+  dlqEl.style.cssText=diffStyle(dLq*60);
+
+  // N
+  set('h-n', H.n+'건'); set('k-n', K.n+'건');
+
+  // Winner
+  const dTot=K.total-H.total;
+  const wb=document.getElementById('winner-banner');
+  wb.className='winner-banner';
+  if(Math.abs(dTot)<10){
+    wb.classList.add('tie');
+    set('winner-icon','🤝'); set('winner-text','두 방식이 비슷한 총 대기시간을 보입니다');
+    set('winner-sub',`차이: ${fmt(Math.abs(dTot))} 이내`);
+  } else if(dTot>0){
+    wb.classList.add('human');
+    set('winner-icon','👤'); set('winner-text',`인간서버 방식이 ${fmt(Math.abs(dTot))} 더 빠릅니다`);
+    set('winner-sub','키오스크 조리 단계 병목으로 총 시간이 더 길어집니다');
+  } else {
+    wb.classList.add('kiosk');
+    set('winner-icon','🖥️'); set('winner-text',`키오스크+인간 방식이 ${fmt(Math.abs(dTot))} 더 빠릅니다`);
+    set('winner-sub','병렬 주문 처리로 대기줄이 분산됩니다');
+  }
+
+  generateInsights(H,K,lambda);
+  buildLambdaTable();
+  buildTheoryTable(H,K);
+
+  btn.disabled=false; sp.style.display='none';
+  document.getElementById('run-label').textContent='▶ 시뮬레이션 재실행';
+}
+
+function set(id,v){ document.getElementById(id).textContent=v; }
+function setDiff(id,v){
+  const el=document.getElementById(id);
+  el.textContent=diffText(v); el.style.cssText=diffStyle(v);
+}
+
+function generateInsights(H,K,lambda){
+  const dTot=K.total-H.total;
+  const ins=[];
+  if(dTot>0) ins.push({warn:false,title:'인간서버가 더 빠른 이유',
+    text:`키오스크 도입 시 주문이 빨리 몰려 조리 단계(${fmt(S.kioskMuC*60)})가 병목이 됩니다. 인간서버 조리(${fmt(S.humanMu*60)})보다 ${fmt(S.kioskMuC*60-S.humanMu*60)} 더 깁니다.`});
+  else ins.push({warn:false,title:'키오스크+인간이 더 빠른 이유',
+    text:`병렬 키오스크로 고객이 분산되어 대기줄이 줄었습니다. λ가 높을수록 이 효과가 더 커집니다.`});
+  if(H.rho>0.85) ins.push({warn:true,title:'⚠️ 인간서버 과부하',
+    text:`이용률 ${(H.rho*100).toFixed(0)}% — 0.85 초과 시 대기가 기하급수적으로 증가합니다. 서버를 추가하세요.`});
+  if(K.rhoC>0.85) ins.push({warn:true,title:'⚠️ 조리서버 과부하',
+    text:`조리서버 이용률 ${(K.rhoC*100).toFixed(0)}% — 키오스크가 주문을 빠르게 처리해도 조리가 따라가지 못합니다.`});
+  ins.push({warn:false,title:'λ 임계점 확인',
+    text:`λ 슬라이더를 조정해 어느 도착률에서 두 방식의 우위가 역전되는지 직접 확인해보세요.`});
+  document.getElementById('insight-grid').innerHTML=ins.map(i=>
+    `<div class="insight-card${i.warn?' warn':''}"><h4>${i.title}</h4><p>${i.text}</p></div>`).join('');
+}
+
+function buildLambdaTable(){
+  const{humanC,humanMu,kioskK,kioskMuK,kioskC,kioskMuC,simTime}=S;
+  const tbody=document.getElementById('lambda-tbody'); tbody.innerHTML='';
+  [0.3,0.5,0.8,1.0,1.5,2.0,2.5,3.0,4.0,5.0].forEach(lam=>{
+    const L=lam/60, T=simTime*60;
+    const h=simHuman(L,humanMu*60,humanC,T);
+    const k=simKiosk(L,kioskMuK*60,kioskK,kioskMuC*60,kioskC,T);
+    const hT=avg(h.tot),kT=avg(k.tot),diff=kT-hT;
+    const cur=Math.abs(lam-S.lambda)<0.05;
+    const isH=hT<kT;
+    tbody.innerHTML+=`<tr class="${cur?'current-row':''}">
+      <td>${lam.toFixed(1)}${cur?' <strong>◀ 현재</strong>':''}</td>
+      <td class="td-green">${fmt(hT)}</td>
+      <td class="td-yellow">${fmt(kT)}</td>
+      <td style="${diffStyle(diff)};font-family:'Space Mono',monospace;font-weight:700">${diffText(diff)}</td>
+      <td><span class="tag ${Math.abs(diff)<10?'tag-tie':isH?'tag-green':'tag-yellow'}">${Math.abs(diff)<10?'동등':isH?'👤 인간':'🖥️ 키오스크'}</span></td>
+    </tr>`;
+  });
+}
+
+function buildTheoryTable(H,K){
+  const{lambda,humanC,humanMu,kioskK,kioskMuK,kioskC,kioskMuC}=S;
+  const L=lambda/60;
+  const hT=mmcTheory(L,1/(humanMu*60),humanC);
+  const kTK=mmcTheory(L,1/(kioskMuK*60),kioskK);
+  const kTC=mmcTheory(L,1/(kioskMuC*60),kioskC);
+  const kThTot=(kTK.W+kTC.W)*60;
+  document.getElementById('theory-tbody').innerHTML=`
+    <tr><td>이용률 ρ</td>
+      <td class="td-green">${(hT.rho*100).toFixed(1)}%</td>
+      <td class="td-green">${(H.rho*100).toFixed(1)}%</td>
+      <td class="td-yellow">${(kTK.rho*100).toFixed(1)}% / ${(kTC.rho*100).toFixed(1)}%</td>
+      <td class="td-yellow">${(K.rhoK*100).toFixed(1)}% / ${(K.rhoC*100).toFixed(1)}%</td></tr>
+    <tr><td>줄 대기 Wq</td>
+      <td class="td-green">${fmt(hT.Wq*60)}</td>
+      <td class="td-green">${fmt(H.wq)}</td>
+      <td class="td-yellow">${fmt(kTK.Wq*60)} + ${fmt(kTC.Wq*60)}</td>
+      <td class="td-yellow">${fmt(K.kwq)} + ${fmt(K.cwq)}</td></tr>
+    <tr><td>총 체류시간 W</td>
+      <td class="td-green">${fmt(hT.W*60)}</td>
+      <td class="td-green">${fmt(H.total)}</td>
+      <td class="td-yellow">${fmt(kThTot)}</td>
+      <td class="td-yellow">${fmt(K.total)}</td></tr>
+    <tr><td>평균 대기인원 Lq</td>
+      <td class="td-green">${isFinite(hT.Lq)?hT.Lq.toFixed(3):'∞'}</td>
+      <td class="td-green">${H.lq.toFixed(3)}</td>
+      <td class="td-yellow">${isFinite(kTK.Lq)?kTK.Lq.toFixed(3):'∞'} + ${isFinite(kTC.Lq)?kTC.Lq.toFixed(3):'∞'}</td>
+      <td class="td-yellow">${K.lqK.toFixed(3)} + ${K.lqC.toFixed(3)}</td></tr>`;
+}
+
+function drawDistribution(hArr,kArr){
+  const canvas=document.getElementById('dist-canvas');
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth-48, HC=220;
+  canvas.width=W*dpr; canvas.height=HC*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=HC+'px';
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  const all=[...hArr,...kArr];
+  const maxSec=Math.min(Math.max(...all),avg(all)*4);
+  const bins=30,bW=maxSec/bins;
+  const hC=new Array(bins).fill(0),kC=new Array(bins).fill(0);
+  hArr.forEach(v=>{ const b=Math.min(Math.floor(v/bW),bins-1); hC[b]++; });
+  kArr.forEach(v=>{ const b=Math.min(Math.floor(v/bW),bins-1); kC[b]++; });
+  const mxC=Math.max(...hC,...kC);
+  const pad={l:40,r:16,t:16,b:36}, cw=W-pad.l-pad.r, ch=HC-pad.t-pad.b, bw=cw/bins;
+  ctx.clearRect(0,0,W,HC);
+  ctx.strokeStyle='#e0ece5'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+ch-(ch*i/4);
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
+  }
+  for(let i=0;i<bins;i++){
+    const x=pad.l+i*bw;
+    ctx.fillStyle='rgba(0,140,53,0.65)';
+    const hh=(hC[i]/mxC)*ch; ctx.fillRect(x,pad.t+ch-hh,bw/2-1,hh);
+    ctx.fillStyle='rgba(185,147,15,0.75)';
+    const kh=(kC[i]/mxC)*ch; ctx.fillRect(x+bw/2,pad.t+ch-kh,bw/2-1,kh);
+  }
+  ctx.strokeStyle='#c8ddd0'; ctx.beginPath();
+  ctx.moveTo(pad.l,pad.t+ch);ctx.lineTo(pad.l+cw,pad.t+ch);ctx.stroke();
+  ctx.fillStyle='#8aab96'; ctx.font='10px Space Mono'; ctx.textAlign='center';
+  for(let i=0;i<=6;i++) ctx.fillText(fmt(maxSec*i/6),pad.l+(cw*i/6),HC-8);
+}
+
+document.querySelectorAll('input[type=range]').forEach(el=>{
+  const min=parseFloat(el.min),max=parseFloat(el.max),val=parseFloat(el.value);
+  el.style.setProperty('--pct',((val-min)/(max-min)*100).toFixed(1)+'%');
+});
+</script>
+</body>
+</html>
