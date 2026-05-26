@@ -207,8 +207,8 @@
           </div>
         </div>
         <div class="mu-badge">
-          <span class="mu-badge-label">조리시간 μ (고정)</span>
-          <span class="mu-badge-val green">3분 21초 &nbsp;<span style="font-size:10px;color:var(--text3);font-weight:400">실측 평균</span></span>
+          <span class="mu-badge-label">직원 μ (고정)</span>
+          <span class="mu-badge-val green">0.30명/분 &nbsp;<span style="font-size:10px;color:var(--text3);font-weight:400">실측 평균</span></span>
         </div>
       </div>
 
@@ -224,8 +224,8 @@
           </div>
         </div>
         <div class="mu-badge">
-          <span class="mu-badge-label">키오스크 주문시간 μ_k (고정)</span>
-          <span class="mu-badge-val yellow">2분 07초 &nbsp;<span style="font-size:10px;color:var(--text3);font-weight:400">실측 평균</span></span>
+          <span class="mu-badge-label">키오스크 μ</span>
+          <span class="mu-badge-val yellow">0.56명/분 &nbsp;<span style="font-size:10px;color:var(--text3);font-weight:400">실측 평균</span></span>
         </div>
         <div class="ctrl-row">
           <div class="ctrl-label"><span>인간서버 수 c_k</span><span class="ctrl-val" id="kiosk-c-val">3</span></div>
@@ -238,8 +238,8 @@
           </div>
         </div>
         <div class="mu-badge">
-          <span class="mu-badge-label">조리시간 μ_c (고정)</span>
-          <span class="mu-badge-val yellow">4분 51초 &nbsp;<span style="font-size:10px;color:var(--text3);font-weight:400">실측 평균</span></span>
+          <span class="mu-badge-label">직원 μ_c (고정)</span>
+          <span class="mu-badge-val yellow">0.25명/분 &nbsp;<span style="font-size:10px;color:var(--text3);font-weight:400">실측 평균</span></span>
         </div>
       </div>
 
@@ -404,7 +404,7 @@
 </div>
 
 <script>
-const S = { lambda:1.5, simTime:60, humanC:3, humanMu:3.346, kioskK:2, kioskMuK:2.110, kioskC:3, kioskMuC:4.857 };
+const S = { lambda:1.5, simTime:60, humanC:3, humanMu:3.333, kioskK:2, kioskMuK:1.786, kioskC:3, kioskMuC:4.000 };
 const simResults = { human:null, kiosk:null };
 
 function updateSlider(el, id, min, max, dec) {
